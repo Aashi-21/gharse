@@ -68,7 +68,7 @@ function mapApiError(err: unknown): HttpError {
 
 export function createAiClient(config: Config, prisma: PrismaClient, log: FastifyBaseLogger): AiClient {
   const sdk = config.ANTHROPIC_API_KEY
-    ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY, timeout: config.AI_TIMEOUT_MS, maxRetries: 2 })
+    ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY, timeout: config.AI_TIMEOUT_MS, maxRetries: config.AI_MAX_RETRIES })
     : null;
 
   async function record(req: StructuredRequest<unknown>, r: {

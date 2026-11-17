@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PRODUCT_CATEGORIES } from '../products/categories';
 
 const hex = z
   .string()
@@ -33,3 +34,26 @@ export const brandBriefSchema = z.object({
   personality: z.string().trim().min(3, 'Describe the feeling you want your brand to have').max(200),
 });
 export type BrandBrief = z.infer<typeof brandBriefSchema>;
+
+/** What Claude returns for a product photo. Caps are deliberately well above the targets in each description. */
+export const listingSchema = z.object({
+  visibleCharacteristics: z
+    .array(z.string().trim().min(2).max(160))
+    .min(1)
+    .max(12)
+    .describe('3-8 short observations about what is CLEARLY VISIBLE in the photo: colours, shapes, patterns, visible parts, apparent finish. Never materials, sizes or anything not visible.'),
+  title: z.string().trim().min(2).max(120).describe('Product title, about 4-8 words (aim for under 70 characters). Plain and descriptive.'),
+  description: z.string().trim().min(20).max(1800).describe('Product description in the brand voice, about 40-90 words (roughly 250-600 characters). Only visible facts and seller-stated facts.'),
+  category: z.enum(PRODUCT_CATEGORIES).describe('Best-fitting category from the allowed list'),
+  tags: z.array(z.string().trim().min(1).max(40)).min(3).max(10).describe('4-8 short lowercase search tags (aim for under 20 characters each) describing the product type and visible features. No claims.'),
+  openQuestions: z
+    .array(
+      z.object({
+        attribute: z.string().trim().min(2).max(40).describe('Short id of the missing fact, e.g. material, size, weight, scent, quantity, care, how_made'),
+        question: z.string().trim().min(5).max(300).describe('A plain-English question to the seller asking for that missing fact'),
+      }),
+    )
+    .max(10)
+    .describe('3-6 questions about product facts that cannot be established from the photo or seller notes'),
+});
+export type ListingDraft = z.infer<typeof listingSchema>;

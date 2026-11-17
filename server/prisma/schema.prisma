@@ -157,6 +157,12 @@ model Product {
   sellerNotes   Json?
   /// questions Claude could not answer from the photo
   openQuestions Json?
+  /// things clearly visible in the photo (colours, shapes, visible parts) as reported by Claude
+  visibleCharacteristics String[] @default([])
+  /// approved brand version that the AI listing was written from
+  brandVersion  Int?
+  /// the untouched AI output (title, description, ...) kept alongside the seller-edited columns above
+  aiDraft       Json?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

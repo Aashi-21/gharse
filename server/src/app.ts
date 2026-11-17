@@ -1,17 +1,20 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import { PrismaClient } from '@prisma/client';
 import Fastify from 'fastify';
 import type { Config } from './config';
+import { IMAGE_LIMITS } from './lib/imageInfo';
 import { createMailer } from './lib/mailer';
 import { sendSpa } from './lib/staticSpa';
 import { createStorage } from './lib/storage';
 import { createAiClient, type AiClient } from './modules/ai/client';
 import { authRoutes } from './modules/auth/routes';
 import { brandRoutes } from './modules/brand/routes';
+import { productRoutes } from './modules/products/routes';
 import { healthRoutes } from './modules/health/routes';
 import { sellerRoutes } from './modules/seller/routes';
 import { registerAuth } from './plugins/auth';
@@ -59,6 +62,8 @@ export async function buildApp(config: Config, overrides: { ai?: AiClient } = {}
     strictTransportSecurity: config.cookieSecure,
   });
   await app.register(cookie);
+  // One image per request; the size cap (IMAGE_LIMITS.maxBytes) and field limits are enforced while streaming.
+  await app.register(multipart, { limits: { fileSize: IMAGE_LIMITS.maxBytes, files: 1, fields: 3, fieldSize: 4096, parts: 5 } });
   await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute' });
 
   // CSRF defence in depth (on top of SameSite=Lax cookies and JSON-only bodies):
@@ -87,6 +92,7 @@ export async function buildApp(config: Config, overrides: { ai?: AiClient } = {}
   await app.register(authRoutes);
   await app.register(sellerRoutes);
   await app.register(brandRoutes);
+  await app.register(productRoutes);
 
   // Serve the built React app (single deployable). In dev, Vite serves the web app instead.
   const hasWeb = fs.existsSync(path.join(publicDir, 'index.html'));

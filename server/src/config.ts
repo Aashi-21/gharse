@@ -36,6 +36,7 @@ const schema = z
     CLAUDE_MODEL_FAST: z.string().default('claude-haiku-5-5'),
     AI_TIMEOUT_MS: z.coerce.number().int().min(5000).max(300000).default(90000),
     // Per-seller abuse/cost guards, counted from ai_generations (every attempt, including failures).
+    AI_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(2),
     AI_HOURLY_LIMIT: z.coerce.number().int().min(1).default(20),
     AI_DAILY_LIMIT: z.coerce.number().int().min(1).default(100),
   })

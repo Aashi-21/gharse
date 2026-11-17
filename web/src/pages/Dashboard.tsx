@@ -23,6 +23,7 @@ export default function Dashboard() {
           <nav className="flex items-center gap-1">
             <NavLink to="/dashboard" end className={linkCls}>Overview</NavLink>
             <NavLink to="/dashboard/brand" className={linkCls}>Brand</NavLink>
+            <NavLink to="/dashboard/products" className={linkCls}>Products</NavLink>
             <NavLink to="/dashboard/profile" className={linkCls}>Profile</NavLink>
             <button
               onClick={async () => {

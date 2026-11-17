@@ -2,7 +2,7 @@
 
 Launch your handmade brand online. React + Vite + Tailwind frontend, Fastify + Prisma + PostgreSQL backend, one Node process serves both.
 
-**Status (Day 1):** scaffold, config validation, PostgreSQL schema + migration + sample seed, health endpoint, seller registration/login with server-side sessions, seller profile + store address, React onboarding and dashboard shell. Brand, products, storefront and orders are not built yet.
+**Status:** auth, onboarding, AI brand creation with persistent brand memory, and AI product drafts from a photo (upload, Claude vision, review, edit, save as draft). Publishing, the public storefront and orders are not built yet.
 
 ## Requirements
 - Node.js >= 20.17, npm >= 10
@@ -49,3 +49,21 @@ Startup file for cPanel "Setup Node.js App": `server/dist/server.js` (CommonJS, 
 - Passwords: scrypt (node:crypto). Sessions: random 256-bit token in an httpOnly, SameSite=Lax cookie (Secure when `APP_URL` is https); only its SHA-256 is stored.
 - Mutating requests must come from the app's own origin; auth routes are rate limited.
 - Known, accepted: `npm audit` reports `deepmerge-ts` inside the Prisma **CLI** (build/migrate tooling only, not the request path).
+
+## AI product drafts (Phase 2)
+`Dashboard → Products → Add a product`: choose one photo (resized in the browser to <=1568px JPEG), optionally add facts about the product, and Claude drafts a title, description, category, tags, what it can see, and questions for what it cannot know.
+
+- The seller's **approved brand is loaded from PostgreSQL on every request** (409 `brand_required` if none). No conversation history is used.
+- Claude may only use what is visible in the photo and what the seller typed. A code-level guard (`server/src/modules/ai/claimGuard.ts`) rejects invented claims (materials, sizes, scent, handmade, eco, price, what is included...) unless the seller's own notes state them; one corrective retry, then nothing is saved.
+- Drafts are saved as `DRAFT` with price empty and stock 0. Nothing is published automatically.
+- Images are validated by magic bytes, dimensions (32-8000px) and size (<=5 MB), stored via the storage abstraction (`UPLOAD_DIR`), never in PostgreSQL, under server-generated paths.
+
+### Verify locally
+```bash
+DATABASE_URL=$TEST_DATABASE_URL npm run db:deploy   # applies the new migration to the test DB
+npm run db:migrate                                   # applies it to the dev DB
+npm test && npm run typecheck && npm run build
+npm run ai:smoke                                     # real Claude: brand generation (a few cents)
+npm run e2e:brand-memory -- /path/to/candle.jpg /path/to/crochet.jpg   # real Claude: full brand-memory scenario, uses the *_test DB
+npm run dev                                          # then use the UI at http://localhost:5173
+```

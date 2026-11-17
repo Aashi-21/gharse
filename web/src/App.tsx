@@ -5,7 +5,10 @@ import AuthPage from './pages/AuthPage';
 import BrandPage from './pages/BrandPage';
 import Dashboard from './pages/Dashboard';
 import Landing from './pages/Landing';
+import NewProductPage from './pages/NewProductPage';
 import Onboarding from './pages/Onboarding';
+import ProductReviewPage from './pages/ProductReviewPage';
+import ProductsPage from './pages/ProductsPage';
 import ProfilePage from './pages/ProfilePage';
 import Overview from './pages/Overview';
 
@@ -44,6 +47,9 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />}>
           <Route index element={<Overview />} />
           <Route path="brand" element={<BrandPage />} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="products/new" element={<NewProductPage />} />
+          <Route path="products/:id" element={<ProductReviewPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
       </Route>

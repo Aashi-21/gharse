@@ -10,12 +10,14 @@
     "prisma": "node scripts/prisma.cjs",
     "seed": "tsx prisma/seed.ts",
     "ai:smoke": "tsx scripts/ai-smoke.ts",
+    "e2e:brand-memory": "tsx scripts/e2e-brand-memory.ts",
     "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.9.0",
     "@fastify/cookie": "^11.0.0",
     "@fastify/helmet": "^13.0.0",
+    "@fastify/multipart": "^9.4.0",
     "@fastify/rate-limit": "^10.0.0",
     "@prisma/client": "^6.19.0",
     "fastify": "^5.0.0",

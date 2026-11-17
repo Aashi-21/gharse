@@ -90,3 +90,58 @@ export const cannedBrand = {
   visualGuidelines: 'Soft evening light, earthy backgrounds, one product per frame, no clutter.',
   nameOptions: ['Ember & Wick', 'Slow Glow', 'Hearth Notes'],
 };
+
+/** Hand-rolled multipart body so tests exercise the real upload parser. */
+export function multipartBody(parts: { name: string; filename?: string; type?: string; data: Buffer | string }[]) {
+  const boundary = '----gharseTestBoundary' + Math.random().toString(16).slice(2);
+  const chunks: Buffer[] = [];
+  for (const p of parts) {
+    const disp = `form-data; name="${p.name}"` + (p.filename !== undefined ? `; filename="${p.filename}"` : '');
+    chunks.push(Buffer.from(`--${boundary}\r\nContent-Disposition: ${disp}\r\n` + (p.type ? `Content-Type: ${p.type}\r\n` : '') + '\r\n'));
+    chunks.push(Buffer.isBuffer(p.data) ? p.data : Buffer.from(p.data));
+    chunks.push(Buffer.from('\r\n'));
+  }
+  chunks.push(Buffer.from(`--${boundary}--\r\n`));
+  return { payload: Buffer.concat(chunks), headers: { 'content-type': `multipart/form-data; boundary=${boundary}` } };
+}
+
+/** POST /api/seller/products/analyze with one image (and optional notes). */
+export function analyzeRequest(app: FastifyInstance, cookie: string, image: Buffer, opts: { notes?: string; filename?: string; type?: string; extra?: { name: string; filename?: string; data: Buffer | string }[] } = {}) {
+  const parts: Parameters<typeof multipartBody>[0] = [{ name: 'image', filename: opts.filename ?? 'photo.jpg', type: opts.type ?? 'image/jpeg', data: image }];
+  if (opts.notes !== undefined) parts.push({ name: 'notes', data: opts.notes });
+  if (opts.extra) parts.push(...opts.extra);
+  const { payload, headers } = multipartBody(parts);
+  return app.inject({ method: 'POST', url: '/api/seller/products/analyze', headers: { ...headers, cookie }, payload });
+}
+
+export async function approveBrand(app: FastifyInstance, cookie: string, over: Record<string, unknown> = {}) {
+  const { nameOptions: _n, ...brand } = cannedBrand;
+  const res = await app.inject({ method: 'PUT', url: '/api/seller/brand', headers: { cookie }, payload: { ...brand, ...over } });
+  if (res.statusCode !== 200) throw new Error('approveBrand failed: ' + res.body);
+  return JSON.parse(res.body).brand;
+}
+
+export const candleListing = {
+  visibleCharacteristics: ['A white pillar-style candle inside a clear glass jar', 'A plain cream label on the front of the jar'],
+  title: 'White Candle in Glass Jar',
+  description: 'A calm, soft-looking candle in a clear glass jar with a plain cream label. A quiet little glow for a bedside table or a bookshelf.',
+  category: 'Candles & Home Fragrance',
+  tags: ['candle', 'glass jar', 'white candle', 'home decor'],
+  openQuestions: [
+    { attribute: 'material', question: 'What is the candle made of?' },
+    { attribute: 'scent', question: 'Is it scented? If yes, which fragrance?' },
+    { attribute: 'size', question: 'What is the size or weight of the candle?' },
+  ],
+};
+
+export const crochetListing = {
+  visibleCharacteristics: ['A cream-coloured basket with chunky looped stitches', 'Two short rope-style handles'],
+  title: 'Cream Crochet Basket with Handles',
+  description: 'A soft, cream-coloured basket with chunky looped stitches and two short handles. A calm little piece to keep on a shelf or by the bed.',
+  category: 'Crochet & Knitting',
+  tags: ['crochet', 'basket', 'cream', 'storage'],
+  openQuestions: [
+    { attribute: 'material', question: 'What yarn or material is it made from?' },
+    { attribute: 'size', question: 'What are its measurements?' },
+  ],
+};

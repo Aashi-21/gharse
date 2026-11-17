@@ -29,3 +29,19 @@ export async function api<T = unknown>(path: string, opts: { method?: string; bo
   }
   return data as T;
 }
+
+/** Multipart upload (FormData). The browser sets the multipart boundary header itself. */
+export async function apiForm<T = unknown>(path: string, form: FormData): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(path, { method: 'POST', body: form, credentials: 'same-origin' });
+  } catch {
+    throw new ApiError(0, 'network', 'Could not reach the server. Check your connection and try again.');
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const e = data?.error;
+    throw new ApiError(res.status, e?.code ?? 'error', e?.message ?? 'Something went wrong.', e?.fields ?? {});
+  }
+  return data as T;
+}

@@ -56,7 +56,7 @@ export default function Overview() {
             to="/dashboard/brand"
             cta={me.brand ? 'Edit' : 'Create'}
           />
-          <Item done={false} title="First product" detail="Upload a photo and review the draft listing." />
+          <Item done={false} title="First product" detail="Upload a photo and review the draft listing." to="/dashboard/products" cta="Add" />
           <Item done={false} title="Delivery and return policies" detail="Tell customers what to expect." />
         </ul>
       </Card>
