@@ -1,0 +1,256 @@
+// GharSe database schema. Money is stored as integer paise (INR * 100).
+
+generator client {
+  provider = "prisma-client-js"
+  // "native" for local dev; the others cover Docker (Debian) and cPanel/CloudLinux (RHEL) hosts.
+  binaryTargets = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x", "rhel-openssl-1.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BrandStatus {
+  DRAFT
+  APPROVED
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum OrderStatus {
+  NEW
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum AiKind {
+  BRAND
+  IMAGE_ANALYSIS
+  LISTING
+  MARKETING
+}
+
+enum AiStatus {
+  SUCCESS
+  ERROR
+  INVALID_OUTPUT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  /// true only for the seeded demo account
+  isSample     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions      Session[]
+  sellerProfile SellerProfile?
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  /// SHA-256 of the random cookie token; the raw token is never stored
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model SellerProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  fullName  String
+  /// 10-digit Indian mobile number (no country code)
+  phone     String
+  whatsapp  String?
+  city      String
+  state     String
+  bio       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store?
+
+  @@map("seller_profiles")
+}
+
+model Store {
+  id                  String   @id @default(cuid())
+  sellerProfileId     String   @unique
+  slug                String   @unique
+  /// true only for the seeded demo store
+  isSample            Boolean  @default(false)
+  isPublished         Boolean  @default(false)
+  contactEmail        String?
+  contactPhone        String?
+  deliveryPolicy      String?
+  returnPolicy        String?
+  deliveryChargePaise Int      @default(0)
+  /// per-store counter used to allocate order numbers inside a transaction
+  nextOrderNumber     Int      @default(1)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  sellerProfile SellerProfile @relation(fields: [sellerProfileId], references: [id], onDelete: Cascade)
+  brandProfile  BrandProfile?
+  products      Product[]
+  orders        Order[]
+  aiGenerations AiGeneration[]
+
+  @@map("stores")
+}
+
+model BrandProfile {
+  id                String      @id @default(cuid())
+  storeId           String      @unique
+  name              String
+  tagline           String
+  story             String
+  primaryColor      String
+  secondaryColor    String
+  tone              String
+  personalityTraits String[]
+  descriptionStyle  String
+  visualGuidelines  String
+  status            BrandStatus @default(DRAFT)
+  /// incremented on every approval; recorded on ai_generations for traceability
+  version           Int         @default(1)
+  approvedAt        DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("brand_profiles")
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  storeId       String
+  slug          String
+  title         String
+  description   String
+  category      String?
+  tags          String[]
+  pricePaise    Int?
+  stock         Int           @default(0)
+  status        ProductStatus @default(DRAFT)
+  /// facts the seller typed in (materials, size, ...); only these may appear in generated copy
+  sellerNotes   Json?
+  /// questions Claude could not answer from the photo
+  openQuestions Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  store         Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  images        ProductImage[]
+  orderItems    OrderItem[]
+  aiGenerations AiGeneration[]
+
+  @@unique([storeId, slug])
+  @@index([storeId, status])
+  @@map("products")
+}
+
+model ProductImage {
+  id         String   @id @default(cuid())
+  productId  String
+  storageKey String
+  mimeType   String
+  sizeBytes  Int
+  position   Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  storeId         String
+  orderNumber     Int
+  customerName    String
+  customerPhone   String
+  customerEmail   String?
+  shippingLine1   String
+  shippingLine2   String?
+  shippingCity    String
+  shippingState   String
+  shippingPincode String
+  note            String?
+  status          OrderStatus @default(NEW)
+  subtotalPaise   Int
+  deliveryPaise   Int
+  totalPaise      Int
+  trackingNote    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  store Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  items OrderItem[]
+
+  @@unique([storeId, orderNumber])
+  @@index([storeId, status, createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String   @id @default(cuid())
+  orderId        String
+  /// nullable so order history survives product deletion
+  productId      String?
+  titleSnapshot  String
+  unitPricePaise Int
+  quantity       Int
+  createdAt      DateTime @default(now())
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model AiGeneration {
+  id           String   @id @default(cuid())
+  storeId      String
+  kind         AiKind
+  model        String
+  inputTokens  Int?
+  outputTokens Int?
+  latencyMs    Int?
+  status       AiStatus
+  errorCode    String?
+  productId    String?
+  brandVersion Int?
+  outputJson   Json?
+  createdAt    DateTime @default(now())
+
+  store   Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, createdAt])
+  @@index([productId])
+  @@map("ai_generations")
+}

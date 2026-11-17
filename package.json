@@ -1,0 +1,23 @@
+{
+  "name": "gharse",
+  "private": true,
+  "version": "0.1.0",
+  "description": "GharSe — launch your handmade brand online",
+  "workspaces": ["server", "web"],
+  "engines": { "node": ">=20.17" },
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,magenta \"npm run dev -w server\" \"npm run dev -w web\"",
+    "build": "npm run build -w web && npm run build -w server",
+    "start": "node server/dist/server.js",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
+    "test": "npm run test -w server",
+    "db:migrate": "npm run prisma -w server -- migrate dev",
+    "db:deploy": "npm run prisma -w server -- migrate deploy",
+    "db:seed": "npm run seed -w server",
+    "ai:smoke": "npm run ai:smoke -w server",
+    "db:studio": "npm run prisma -w server -- studio"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
