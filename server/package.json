@@ -11,6 +11,7 @@
     "seed": "tsx prisma/seed.ts",
     "ai:smoke": "tsx scripts/ai-smoke.ts",
     "e2e:brand-memory": "tsx scripts/e2e-brand-memory.ts",
+    "e2e:regenerate": "tsx scripts/e2e-regenerate.ts",
     "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts"
   },
   "dependencies": {

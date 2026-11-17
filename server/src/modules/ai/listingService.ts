@@ -64,9 +64,21 @@ const textOf = (d: ListingDraft) => [d.title, d.description, ...d.tags, ...d.vis
  */
 export async function generateListing(
   ai: AiClient,
-  opts: { model: string; storeId: string; brand: BrandProfile; image: ListingImage; notes: string },
+  opts: {
+    model: string;
+    storeId: string;
+    brand: BrandProfile;
+    image: ListingImage;
+    /** Seller-supplied facts shown to Claude (notes, and for regeneration also Q&A pairs). */
+    notes: string;
+    /** What the claim guard accepts as seller-stated. Defaults to `notes`. */
+    supportedFacts?: string;
+    /** Links the audit row to an existing product (regeneration). */
+    productId?: string;
+  },
 ): Promise<ListingDraft> {
   const { brand, image, notes } = opts;
+  const guardText = opts.supportedFacts ?? notes;
   const base = [
     { type: 'image' as const, source: { type: 'base64' as const, media_type: image.mime, data: image.base64 } },
     {
@@ -87,9 +99,10 @@ export async function generateListing(
       effort: 'medium',
       storeId: opts.storeId,
       brandVersion: brand.version,
+      productId: opts.productId,
     });
 
-    const claims = describeClaims(textOf(draft), notes);
+    const claims = describeClaims(textOf(draft), guardText);
     if (claims.length === 0) return draft;
 
     feedback = `Your previous draft made claims that are NOT supported by the photo or the seller's notes: ${claims

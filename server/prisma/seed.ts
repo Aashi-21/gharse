@@ -89,9 +89,10 @@ async function main() {
         storeId: store.id,
         ...p,
         description: 'SAMPLE PRODUCT — fictional listing used for demonstration.',
-        category: 'Home décor',
+        category: 'Home Décor',
         tags: ['sample', 'diya'],
         status: 'PUBLISHED',
+        publishedAt: new Date(),
       },
       update: {},
     });

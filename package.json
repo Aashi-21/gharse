@@ -16,6 +16,7 @@
     "db:seed": "npm run seed -w server",
     "ai:smoke": "npm run ai:smoke -w server",
     "e2e:brand-memory": "npm run e2e:brand-memory -w server --",
+    "e2e:regenerate": "npm run e2e:regenerate -w server --",
     "db:studio": "npm run prisma -w server -- studio"
   },
   "devDependencies": {

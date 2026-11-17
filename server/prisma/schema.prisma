@@ -163,6 +163,8 @@ model Product {
   brandVersion  Int?
   /// the untouched AI output (title, description, ...) kept alongside the seller-edited columns above
   aiDraft       Json?
+  /// set when the seller publishes, cleared on unpublish. Only PUBLISHED products may ever be shown to customers.
+  publishedAt   DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

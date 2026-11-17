@@ -8,6 +8,11 @@ export interface Storage {
   put(key: string, data: Buffer): Promise<void>;
   get(key: string): Promise<Buffer>;
   delete(key: string): Promise<void>;
+  /**
+   * Metadata only (no file contents are read). Returns the size of a regular file, or null when the key does not
+   * point at one: missing, a directory, unreadable, or an invalid key. Never throws and never reveals paths.
+   */
+  stat(key: string): Promise<{ size: number } | null>;
   /** Throws if storage is not usable (used by /api/health). */
   check(): Promise<void>;
 }
@@ -39,6 +44,14 @@ export function createStorage(config: Config): Storage {
     },
     get: (key) => fs.readFile(resolveKey(key)),
     delete: (key) => unlinkQuiet(resolveKey(key)),
+    async stat(key) {
+      try {
+        const st = await fs.stat(resolveKey(key));
+        return st.isFile() ? { size: st.size } : null;
+      } catch {
+        return null; // ENOENT, EACCES, invalid key ...: all mean "not usable"
+      }
+    },
     async check() {
       await fs.mkdir(root, { recursive: true });
       const full = resolveKey(`.healthcheck-${randomBytes(6).toString('hex')}`);

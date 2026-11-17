@@ -2,7 +2,7 @@
 
 Launch your handmade brand online. React + Vite + Tailwind frontend, Fastify + Prisma + PostgreSQL backend, one Node process serves both.
 
-**Status:** auth, onboarding, AI brand creation with persistent brand memory, and AI product drafts from a photo (upload, Claude vision, review, edit, save as draft). Publishing, the public storefront and orders are not built yet.
+**Status:** auth, onboarding, AI brand creation with persistent brand memory, and AI product drafts from a photo, answering Claude's questions and regenerating, and publishing/unpublishing products. The public storefront and orders are not built yet.
 
 ## Requirements
 - Node.js >= 20.17, npm >= 10
@@ -67,3 +67,12 @@ npm run ai:smoke                                     # real Claude: brand genera
 npm run e2e:brand-memory -- /path/to/candle.jpg /path/to/crochet.jpg   # real Claude: full brand-memory scenario, uses the *_test DB
 npm run dev                                          # then use the UI at http://localhost:5173
 ```
+
+## Product completion and publishing (Phase 3, milestone 1)
+- **Publish** (`POST /api/seller/products/:id/publish`, body `{ "confirmAccuracy": true }`, required by the API) needs: title, description of at least 20 characters, category, price > 0, stock >= 1 and a photo whose file is verified in storage at publish time (exists, is a file, non-empty, exactly the size recorded at upload; metadata only, no contents read, nothing in the response reveals paths). Tags are optional. Missing items come back as a 400 `not_publishable` with per-field messages; nothing is ever auto-filled. The check runs on a row-locked product inside one transaction.
+- **Unpublish** returns the product to `DRAFT` unchanged. **Live products** can still be edited, but every edit must keep them publishable (stock may drop to 0 for sold out).
+- **Regenerate** (`POST /api/seller/products/:id/regenerate`, drafts only): the seller's answers to Claude's questions are sent with the saved photo and the current approved brand. It overwrites only the AI-owned fields (title, description, category, tags, visible characteristics, open questions); price, stock, notes and earlier answers are preserved. The claim guard treats only the seller's notes and answers as facts (not Claude's own questions). Any failure leaves the product unchanged.
+- Publishing a product does **not** change `Store.isPublished`; the public storefront milestone owns that. Any future customer-facing query must use `PUBLIC_PRODUCT_FILTER` (`server/src/modules/products/visibility.ts`) so DRAFT and ARCHIVED products are never exposed.
+- The database also enforces it: CHECK constraints reject a PUBLISHED row without a positive price, a real title or `publishedAt`, and negative stock.
+
+Live check (real Claude, a few cents, uses the `*_test` database): `npm run e2e:regenerate -- /path/to/photo.jpg`

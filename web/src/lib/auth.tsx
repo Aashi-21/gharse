@@ -26,6 +26,7 @@ export interface Me {
   profile: Profile | null;
   store: Store | null;
   brand: BrandSummary | null;
+  counts: { products: number; published: number };
   onboarding: { profileComplete: boolean; storeComplete: boolean };
 }
 

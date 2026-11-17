@@ -58,6 +58,9 @@ export default function ProductsPage() {
                   <p className="text-sm text-ink-soft">
                     {p.pricePaise !== null ? `₹${rupees(p.pricePaise)}` : 'Price not set'} · {p.stock} in stock
                   </p>
+                  {p.status === 'DRAFT' && p.readiness.issues.length > 0 && (
+                    <p className="text-xs text-clay-dark">To publish: {p.readiness.issues.map((i) => i.field).join(', ')}</p>
+                  )}
                 </div>
               </Link>
             </li>

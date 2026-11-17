@@ -40,7 +40,7 @@ export default function Overview() {
           Address: <span className="font-medium text-ink">{window.location.host}/store/{me.store?.slug}</span>
         </p>
         <p className="mt-2 text-sm text-ink-faint">
-          {me.store?.isPublished ? 'Your store is live.' : 'Not published yet — customers cannot see it until you add and publish a product.'}
+          {me.store?.isPublished ? 'Your store is live.' : 'Your public store page is not live yet. Publishing products now prepares them; the store page itself comes in a later step.'}
         </p>
       </Card>
 
@@ -56,7 +56,19 @@ export default function Overview() {
             to="/dashboard/brand"
             cta={me.brand ? 'Edit' : 'Create'}
           />
-          <Item done={false} title="First product" detail="Upload a photo and review the draft listing." to="/dashboard/products" cta="Add" />
+          <Item
+            done={me.counts.published > 0}
+            title="First product"
+            detail={
+              me.counts.published > 0
+                ? `${me.counts.published} published product${me.counts.published === 1 ? '' : 's'}`
+                : me.counts.products > 0
+                  ? `${me.counts.products} draft${me.counts.products === 1 ? '' : 's'} waiting for a price, stock and your approval.`
+                  : 'Upload a photo and review the draft listing.'
+            }
+            to="/dashboard/products"
+            cta={me.counts.products > 0 ? 'Open' : 'Add'}
+          />
           <Item done={false} title="Delivery and return policies" detail="Tell customers what to expect." />
         </ul>
       </Card>
