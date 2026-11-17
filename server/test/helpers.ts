@@ -12,7 +12,7 @@ if (!testUrl) throw new Error('TEST_DATABASE_URL is not set (see .env.example)')
 // Safety: tests TRUNCATE every table, so refuse to run against anything that is not clearly a test DB.
 if (!/\/[^/?]*_test(\?|$)/.test(testUrl)) throw new Error('TEST_DATABASE_URL database name must end with _test');
 
-export async function makeApp(overrides: Record<string, string> = {}, ai?: AiClient) {
+export async function makeApp(overrides: Record<string, string> = {}, ai?: AiClient, beforeReady?: (app: FastifyInstance) => void) {
   const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gharse-uploads-'));
   const config: Config = loadConfig({
     ...process.env,
@@ -21,9 +21,13 @@ export async function makeApp(overrides: Record<string, string> = {}, ai?: AiCli
     UPLOAD_DIR: uploadDir,
     SMTP_HOST: '',
     AUTH_RATE_LIMIT_MAX: '1000',
+    ORDER_RATE_LIMIT_MAX: '1000',
+    ORDER_PHONE_HOURLY_LIMIT: '1000',
+    ORDER_STORE_HOURLY_LIMIT: '1000',
     ...overrides,
   });
   const app = await buildApp(config, ai ? { ai } : {});
+  beforeReady?.(app); // lets a test add hooks (e.g. to observe logging) before the app is sealed
   await app.ready();
   return { app, config, uploadDir };
 }
@@ -145,3 +149,57 @@ export const crochetListing = {
     { attribute: 'size', question: 'What are its measurements?' },
   ],
 };
+
+/** A seller whose store has an approved brand and ONE published product (via the real publish flow). */
+export async function sellerWithPublishedProduct(app: FastifyInstance, email: string, slug: string, opts: { price?: string; stock?: number } = {}) {
+  const { jpegBytes } = await import('./images');
+  const cookie = await sellerWithStore(app, email, slug);
+  await approveBrand(app, cookie);
+  const created = await analyzeRequest(app, cookie, jpegBytes(1568, 1000, 600));
+  if (created.statusCode !== 201) throw new Error('analyze failed: ' + created.body);
+  const id = JSON.parse(created.body).product.id as string;
+  const patched = await app.inject({ method: 'PATCH', url: `/api/seller/products/${id}`, headers: { cookie }, payload: { price: opts.price ?? '499', stock: opts.stock ?? 5 } });
+  if (patched.statusCode !== 200) throw new Error('patch failed: ' + patched.body);
+  const published = await app.inject({ method: 'POST', url: `/api/seller/products/${id}/publish`, headers: { cookie }, payload: { confirmAccuracy: true } });
+  if (published.statusCode !== 200) throw new Error('publish failed: ' + published.body);
+  const productSlug = (await app.prisma.product.findUniqueOrThrow({ where: { id } })).slug;
+  return { cookie, productId: id, productSlug };
+}
+
+export const validStoreSettings = {
+  contactPhone: '+91 98111 22233',
+  deliveryPolicy: 'We dispatch within 3 to 5 days across India.',
+  returnPolicy: 'Damaged items can be reported within 48 hours.',
+  deliveryCharge: '60',
+};
+
+/** A fully live store: approved brand, one published product, settings filled in, and the STORE published. */
+export async function liveStore(app: FastifyInstance, email: string, slug: string, opts: { price?: string; stock?: number; deliveryCharge?: string } = {}) {
+  const s = await sellerWithPublishedProduct(app, email, slug, opts);
+  const settings = await app.inject({ method: 'PUT', url: '/api/seller/store/settings', headers: { cookie: s.cookie }, payload: { ...validStoreSettings, deliveryCharge: opts.deliveryCharge ?? '60' } });
+  if (settings.statusCode !== 200) throw new Error('settings failed: ' + settings.body);
+  const pub = await app.inject({ method: 'POST', url: '/api/seller/store/publish', headers: { cookie: s.cookie } });
+  if (pub.statusCode !== 200) throw new Error('store publish failed: ' + pub.body);
+  return s;
+}
+
+let keyCounter = 0;
+export const newKey = () => `test-key-${Date.now().toString(36)}-${(keyCounter++).toString(36)}`;
+
+export const validOrder = (productSlug: string, over: Record<string, unknown> = {}) => ({
+  productSlug,
+  quantity: 1,
+  customer: { name: 'Anita Verma', phone: '98765 12345' },
+  address: { line1: '12 MG Road', line2: 'Near the park', city: 'Pune', state: 'Maharashtra', pincode: '411001' },
+  note: 'Please call before delivery',
+  ...over,
+});
+
+export function placeOrderRequest(app: FastifyInstance, storeSlug: string, body: unknown, key: string | null = newKey(), headers: Record<string, string> = {}) {
+  return app.inject({
+    method: 'POST',
+    url: `/api/public/stores/${storeSlug}/orders`,
+    headers: { ...(key === null ? {} : { 'idempotency-key': key }), ...headers },
+    payload: body as object,
+  });
+}

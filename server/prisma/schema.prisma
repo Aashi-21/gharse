@@ -211,6 +211,10 @@ model Order {
   deliveryPaise   Int
   totalPaise      Int
   trackingNote    String?
+  /// client-generated key that makes a checkout safe to retry or double-click: same key = same order, stock taken once
+  idempotencyKey  String
+  /// sha256 of the normalised checkout request, so reusing a key for a DIFFERENT request is detected
+  requestHash     String
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
@@ -218,6 +222,7 @@ model Order {
   items OrderItem[]
 
   @@unique([storeId, orderNumber])
+  @@unique([storeId, idempotencyKey])
   @@index([storeId, status, createdAt])
   @@map("orders")
 }

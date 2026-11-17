@@ -2,7 +2,7 @@
 
 Launch your handmade brand online. React + Vite + Tailwind frontend, Fastify + Prisma + PostgreSQL backend, one Node process serves both.
 
-**Status:** auth, onboarding, AI brand creation with persistent brand memory, and AI product drafts from a photo, answering Claude's questions and regenerating, and publishing/unpublishing products. The public storefront and orders are not built yet.
+**Status:** auth, onboarding, AI brand creation with persistent brand memory, and AI product drafts from a photo, answering Claude's questions and regenerating, and publishing/unpublishing products. A public seller storefront and customer order management (no online payment).
 
 ## Requirements
 - Node.js >= 20.17, npm >= 10
@@ -76,3 +76,21 @@ npm run dev                                          # then use the UI at http:/
 - The database also enforces it: CHECK constraints reject a PUBLISHED row without a positive price, a real title or `publishedAt`, and negative stock.
 
 Live check (real Claude, a few cents, uses the `*_test` database): `npm run e2e:regenerate -- /path/to/photo.jpg`
+
+## Public storefront and orders (Phase 3, milestone 2)
+- **Store settings and publishing** (`Dashboard → Store`): contact phone (shown publicly only if the seller types it; never copied from the private profile), one flat delivery charge, delivery and return policies. A store goes public only with an approved brand, a contact phone, both policies and at least one published product. Store publication is separate from product publication.
+- **Public store** at `/store/:slug` and product pages at `/store/:slug/p/:productSlug` (React routes served by the same Node process), backed by `/api/public/stores/...`. Only PUBLISHED products of a PUBLISHED store are visible; an unpublished store, a draft product, a missing image file and a store that does not exist all return the same generic 404. Responses use a field whitelist (no ids, seller details or exact stock) and are not cached.
+- **Checkout** (`POST /api/public/stores/:slug/orders`): single product, no customer account, **no payment is collected** (cash on delivery or whatever the customer and seller arrange). Required header `Idempotency-Key` (8-64 chars `A-Za-z0-9_-`) makes retries and double-clicks safe: same key = same order, stock taken once. Every price, delivery charge and total is computed on the server; the request schema is strict, so a client-supplied price, total or status is rejected. Stock is reserved at order creation (one atomic conditional update, so concurrent buyers can never oversell) and returned when the seller cancels.
+- **Customer privacy:** name, phone, address and note are returned or shown only to the owning seller (`/api/seller/orders`). They are never in any public response, and error logs for the checkout route record only the error class and code.
+- **Demo store:** the seeded sample store is public with a "Demo store" banner and cannot take orders.
+- **Seller orders** (`Dashboard → Orders`): list with status filter and pagination, detail, and safe status changes NEW → CONFIRMED → SHIPPED → DELIVERED, or CANCELLED before shipping (restocks exactly once, transactionally). A badge shows NEW orders.
+
+### Abuse limits and TRUST_PROXY (read before deploying)
+Public checkout is limited per client IP (`ORDER_RATE_LIMIT_MAX`, default 10 per minute), per phone number per store (`ORDER_PHONE_HOURLY_LIMIT`, default 3 per hour) and per store (`ORDER_STORE_HOURLY_LIMIT`, default 100 per hour).
+
+The per-IP limit depends on knowing the visitor's real IP, which behind a reverse proxy arrives in `X-Forwarded-For`. The app **does not trust that header unless `TRUST_PROXY=true`**:
+- App directly exposed to the internet: leave `TRUST_PROXY=false`, or anyone could fake their IP.
+- App behind a proxy you control (Caddy/nginx/Apache/Passenger on your own host, which overwrites the header): set `TRUST_PROXY=true`, otherwise every visitor shares the proxy's IP and one limit.
+- Confirm which applies to your GoDaddy hosting before going live. If unsure, keep it `false`; the per-phone and per-store limits still apply.
+
+Live acceptance (what was run): the compiled build over real HTTP with 15 parallel buyers for 4 units (4 orders, 11 sold-out refusals, stock 0), same-key duplicate storms (one order), cancel/restock, and spoofed forwarded IPs with the default settings.

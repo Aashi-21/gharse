@@ -69,7 +69,13 @@ export default function Overview() {
             to="/dashboard/products"
             cta={me.counts.products > 0 ? 'Open' : 'Add'}
           />
-          <Item done={false} title="Delivery and return policies" detail="Tell customers what to expect." />
+          <Item
+            done={!!me.store?.isPublished}
+            title="Public store"
+            detail={me.store?.isPublished ? 'Your store is live and can take orders.' : 'Add your contact phone and policies, then make your store public.'}
+            to="/dashboard/store"
+            cta={me.store?.isPublished ? 'Manage' : 'Set up'}
+          />
         </ul>
       </Card>
     </div>

@@ -2,16 +2,10 @@ import { Prisma } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { HttpError } from '../../lib/httpError';
+import { indianPhone as phone } from '../../lib/indiaAddress';
 import { slugSchema } from '../../lib/slug';
 
 const emptyToUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
-
-// Indian mobile: accepts "98765 43210", "+91 98765-43210", "09876543210"; stores 10 digits.
-const phone = z
-  .string()
-  .trim()
-  .transform((s) => s.replace(/[\s-]/g, '').replace(/^(\+91|91|0)(?=\d{10}$)/, ''))
-  .refine((s) => /^[6-9]\d{9}$/.test(s), 'Enter a valid 10-digit Indian mobile number');
 
 const profileBody = z.object({
   fullName: z.string().trim().min(2, 'Enter your name').max(80),

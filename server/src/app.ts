@@ -14,7 +14,11 @@ import { createStorage } from './lib/storage';
 import { createAiClient, type AiClient } from './modules/ai/client';
 import { authRoutes } from './modules/auth/routes';
 import { brandRoutes } from './modules/brand/routes';
+import { publicOrderRoutes } from './modules/orders/publicRoutes';
+import { sellerOrderRoutes } from './modules/orders/sellerRoutes';
 import { productRoutes } from './modules/products/routes';
+import { publicRoutes } from './modules/public/routes';
+import { storeSettingsRoutes } from './modules/storefront/settings';
 import { healthRoutes } from './modules/health/routes';
 import { sellerRoutes } from './modules/seller/routes';
 import { registerAuth } from './plugins/auth';
@@ -93,6 +97,10 @@ export async function buildApp(config: Config, overrides: { ai?: AiClient } = {}
   await app.register(sellerRoutes);
   await app.register(brandRoutes);
   await app.register(productRoutes);
+  await app.register(storeSettingsRoutes);
+  await app.register(publicRoutes);
+  await app.register(publicOrderRoutes);
+  await app.register(sellerOrderRoutes);
 
   // Serve the built React app (single deployable). In dev, Vite serves the web app instead.
   const hasWeb = fs.existsSync(path.join(publicDir, 'index.html'));

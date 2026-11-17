@@ -22,6 +22,10 @@ const schema = z
       .regex(/^postgres(ql)?:\/\//, 'must start with postgresql://'),
     SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(14),
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
+    // Public checkout abuse limits (no customer accounts, so these are the only protection).
+    ORDER_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10), // per minute per client IP
+    ORDER_PHONE_HOURLY_LIMIT: z.coerce.number().int().min(1).default(3), // per phone number per store per hour
+    ORDER_STORE_HOURLY_LIMIT: z.coerce.number().int().min(1).default(100), // per store per hour
     STORAGE_DRIVER: z.enum(['local']).default('local'),
     UPLOAD_DIR: z.string().default('uploads'),
     SMTP_HOST: z.string().optional(),

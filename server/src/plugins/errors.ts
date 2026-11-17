@@ -2,6 +2,18 @@ import type { FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { HttpError } from '../lib/httpError';
 
+/**
+ * What may be logged for an unexpected error. Errors raised while handling a public checkout can carry customer data
+ * (ORM errors often embed the query arguments: name, phone, address, note), so for those only the error's class and
+ * code are logged, never its message, stack or arguments.
+ */
+export function errorLogPayload(err: unknown, method: string, url: string) {
+  const checkout = method === 'POST' && /^\/api\/public\/stores\/[^/]+\/orders/.test(url);
+  if (!checkout) return { err };
+  const e = err as { name?: string; code?: string };
+  return { errName: e?.name ?? 'Error', errCode: e?.code };
+}
+
 export function registerErrorHandling(app: FastifyInstance) {
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof HttpError) {
@@ -22,7 +34,7 @@ export function registerErrorHandling(app: FastifyInstance) {
       const message = status === 429 ? 'Too many requests. Please wait a moment and try again.' : 'The request could not be understood.';
       return reply.code(status).send({ error: { code, message } });
     }
-    req.log.error({ err }, 'unhandled error');
+    req.log.error(errorLogPayload(err, req.method, req.url), 'unhandled error');
     return reply.code(500).send({ error: { code: 'internal_error', message: 'Something went wrong on our side. Please try again.' } });
   });
 }

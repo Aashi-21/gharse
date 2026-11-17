@@ -24,6 +24,13 @@ export default function Dashboard() {
             <NavLink to="/dashboard" end className={linkCls}>Overview</NavLink>
             <NavLink to="/dashboard/brand" className={linkCls}>Brand</NavLink>
             <NavLink to="/dashboard/products" className={linkCls}>Products</NavLink>
+            <NavLink to="/dashboard/orders" className={linkCls}>
+              Orders
+              {me.newOrders > 0 && (
+                <span className="ml-1.5 rounded-full bg-clay px-2 py-0.5 text-xs font-semibold text-white" aria-label={`${me.newOrders} new orders`}>{me.newOrders}</span>
+              )}
+            </NavLink>
+            <NavLink to="/dashboard/store" className={linkCls}>Store</NavLink>
             <NavLink to="/dashboard/profile" className={linkCls}>Profile</NavLink>
             <button
               onClick={async () => {

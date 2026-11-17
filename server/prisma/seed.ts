@@ -49,12 +49,12 @@ async function main() {
       isSample: true,
       isPublished: true,
       contactEmail: SAMPLE_EMAIL,
-      contactPhone: '9876543210',
+      contactPhone: null, // the demo store is public: never publish a phone number that might belong to a real person
       deliveryPolicy: 'SAMPLE: Orders are dispatched within 3–5 days. Delivery charges are confirmed by the seller.',
       returnPolicy: 'SAMPLE: Damaged items can be reported within 48 hours of delivery.',
       deliveryChargePaise: 6000,
     },
-    update: { isSample: true },
+    update: { isSample: true, contactPhone: null },
   });
 
   await prisma.brandProfile.upsert({

@@ -9,8 +9,13 @@ import NewProductPage from './pages/NewProductPage';
 import Onboarding from './pages/Onboarding';
 import ProductReviewPage from './pages/ProductReviewPage';
 import ProductsPage from './pages/ProductsPage';
+import StorePage from './pages/StorePage';
 import ProfilePage from './pages/ProfilePage';
+import OrderDetailPage from './pages/OrderDetailPage';
+import OrdersPage from './pages/OrdersPage';
 import Overview from './pages/Overview';
+import PublicProductPage from './pages/PublicProductPage';
+import StorefrontPage from './pages/StorefrontPage';
 
 /** Requires login; sends sellers who haven't finished onboarding to /onboarding. */
 function RequireSeller({ needOnboarded }: { needOnboarded: boolean }) {
@@ -36,6 +41,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/store/:slug" element={<StorefrontPage />} />
+      <Route path="/store/:slug/p/:productSlug" element={<PublicProductPage />} />
       <Route element={<GuestOnly />}>
         <Route path="/login" element={<AuthPage mode="login" />} />
         <Route path="/register" element={<AuthPage mode="register" />} />
@@ -50,6 +57,9 @@ export default function App() {
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/new" element={<NewProductPage />} />
           <Route path="products/:id" element={<ProductReviewPage />} />
+          <Route path="orders" element={<OrdersPage />} />
+          <Route path="orders/:id" element={<OrderDetailPage />} />
+          <Route path="store" element={<StorePage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
       </Route>

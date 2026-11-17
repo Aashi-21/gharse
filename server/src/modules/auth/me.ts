@@ -18,12 +18,13 @@ export async function buildMe(prisma: PrismaClient, userId: string) {
   const { store: storeWithBrand, ...profile } = user.sellerProfile ?? ({} as never);
   const { brandProfile, ...store } = storeWithBrand ?? ({} as never);
   const storeId = (storeWithBrand as { id?: string } | undefined)?.id;
-  const [products, published] = storeId
+  const [products, published, newOrders] = storeId
     ? await Promise.all([
         prisma.product.count({ where: { storeId } }),
         prisma.product.count({ where: { storeId, status: 'PUBLISHED' } }),
+        prisma.order.count({ where: { storeId, status: 'NEW' } }),
       ])
-    : [0, 0];
+    : [0, 0, 0];
   const hasProfile = !!user.sellerProfile;
   const hasStore = !!storeWithBrand;
   return {
@@ -32,6 +33,7 @@ export async function buildMe(prisma: PrismaClient, userId: string) {
     store: hasStore ? store : null,
     brand: brandProfile ?? null,
     counts: { products, published },
+    newOrders,
     onboarding: { profileComplete: hasProfile, storeComplete: hasStore },
   };
 }
