@@ -1,0 +1,19 @@
+// Isolated schema used ONLY by tools/db-inspect/inspect.cjs to get a MySQL-capable Prisma client for read-only
+// queries. It is NOT the application schema, creates no tables, and its client is generated into ./.client
+// (the application's generated client in node_modules is not touched).
+generator client {
+  provider      = "prisma-client-js"
+  output        = "./.client"
+  // "native" for this machine, plus the hosts the application itself targets (Debian, RHEL/CloudLinux for cPanel).
+  binaryTargets = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x", "rhel-openssl-1.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DB_INSPECT_URL")
+}
+
+// Prisma requires at least one model; this table is never created or queried.
+model Placeholder {
+  id Int @id
+}

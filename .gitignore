@@ -9,3 +9,6 @@ uploads/
 .DS_Store
 coverage/
 .pgdata/
+
+# Generated read-only Prisma client for tools/db-inspect (contains native engine binaries)
+tools/db-inspect/.client/
