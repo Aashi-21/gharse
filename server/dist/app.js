@@ -30,14 +30,29 @@ const routes_7 = require("./modules/seller/routes");
 const auth_1 = require("./plugins/auth");
 const errors_1 = require("./plugins/errors");
 require("./types");
+const adapter_neon_1 = require("@prisma/adapter-neon");
+const serverless_1 = require("@neondatabase/serverless");
+const ws_1 = __importDefault(require("ws"));
 const publicDir = node_path_1.default.resolve(__dirname, '..', 'public');
+function createPrismaClient(config) {
+    if (config.DATABASE_TRANSPORT === 'neon-websocket') {
+        serverless_1.neonConfig.webSocketConstructor = ws_1.default;
+        const adapter = new adapter_neon_1.PrismaNeon({
+            connectionString: config.DATABASE_URL,
+        });
+        return new client_1.PrismaClient({ adapter });
+    }
+    return new client_1.PrismaClient({
+        datasourceUrl: config.DATABASE_URL,
+    });
+}
 async function buildApp(config, overrides = {}) {
     const app = (0, fastify_1.default)({
         logger: config.NODE_ENV === 'test' ? false : { level: 'info', redact: ['req.headers.cookie', 'req.headers.authorization'] },
         trustProxy: config.TRUST_PROXY,
         bodyLimit: 1024 * 1024,
     });
-    const prisma = new client_1.PrismaClient({ datasourceUrl: config.DATABASE_URL });
+    const prisma = createPrismaClient(config);
     app.decorate('prisma', prisma);
     app.decorate('config', config);
     app.decorate('storage', (0, storage_1.createStorage)(config));
@@ -68,7 +83,15 @@ async function buildApp(config, overrides = {}) {
     });
     await app.register(cookie_1.default);
     // One image per request; the size cap (IMAGE_LIMITS.maxBytes) and field limits are enforced while streaming.
-    await app.register(multipart_1.default, { limits: { fileSize: imageInfo_1.IMAGE_LIMITS.maxBytes, files: 1, fields: 3, fieldSize: 4096, parts: 5 } });
+    await app.register(multipart_1.default, {
+        limits: {
+            fileSize: imageInfo_1.IMAGE_LIMITS.maxBytes,
+            files: 1,
+            fields: 3,
+            fieldSize: 4096,
+            parts: 5,
+        },
+    });
     await app.register(rate_limit_1.default, { global: true, max: 300, timeWindow: '1 minute' });
     // CSRF defence in depth (on top of SameSite=Lax cookies and JSON-only bodies):
     // state-changing requests must come from our own origin.
@@ -107,8 +130,9 @@ async function buildApp(config, overrides = {}) {
     // Serve the built React app (single deployable). In dev, Vite serves the web app instead.
     const hasWeb = node_fs_1.default.existsSync(node_path_1.default.join(publicDir, 'index.html'));
     app.setNotFoundHandler((req, reply) => {
-        if (hasWeb && (req.method === 'GET' || req.method === 'HEAD') && !req.url.startsWith('/api/'))
+        if (hasWeb && (req.method === 'GET' || req.method === 'HEAD') && !req.url.startsWith('/api/')) {
             return (0, staticSpa_1.sendSpa)(publicDir, req.url, reply);
+        }
         return reply.code(404).send({ error: { code: 'not_found', message: 'Not found' } });
     });
     return app;

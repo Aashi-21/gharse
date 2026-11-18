@@ -1,3 +1,4 @@
+
 import fs from 'node:fs';
 import path from 'node:path';
 import cookie from '@fastify/cookie';
@@ -25,8 +26,27 @@ import { sellerRoutes } from './modules/seller/routes';
 import { registerAuth } from './plugins/auth';
 import { registerErrorHandling } from './plugins/errors';
 import './types';
+import { PrismaNeon } from '@prisma/adapter-neon';
+import { neonConfig } from '@neondatabase/serverless';
+import ws from 'ws';
 
 const publicDir = path.resolve(__dirname, '..', 'public');
+
+function createPrismaClient(config: Config): PrismaClient {
+  if (config.DATABASE_TRANSPORT === 'neon-websocket') {
+    neonConfig.webSocketConstructor = ws;
+
+    const adapter = new PrismaNeon({
+      connectionString: config.DATABASE_URL,
+    });
+
+    return new PrismaClient({ adapter });
+  }
+
+  return new PrismaClient({
+    datasourceUrl: config.DATABASE_URL,
+  });
+}
 
 export async function buildApp(config: Config, overrides: { ai?: AiClient } = {}) {
   const app = Fastify({
@@ -35,12 +55,14 @@ export async function buildApp(config: Config, overrides: { ai?: AiClient } = {}
     bodyLimit: 1024 * 1024,
   });
 
-  const prisma = new PrismaClient({ datasourceUrl: config.DATABASE_URL });
+  const prisma = createPrismaClient(config);
+
   app.decorate('prisma', prisma);
   app.decorate('config', config);
   app.decorate('storage', createStorage(config));
   app.decorate('mailer', createMailer(config));
   app.decorate('ai', overrides.ai ?? createAiClient(config, prisma, app.log));
+
   app.addHook('onClose', async () => {
     await prisma.$disconnect();
   });
@@ -66,24 +88,40 @@ export async function buildApp(config: Config, overrides: { ai?: AiClient } = {}
     },
     strictTransportSecurity: config.cookieSecure,
   });
+
   await app.register(cookie);
+
   // One image per request; the size cap (IMAGE_LIMITS.maxBytes) and field limits are enforced while streaming.
-  await app.register(multipart, { limits: { fileSize: IMAGE_LIMITS.maxBytes, files: 1, fields: 3, fieldSize: 4096, parts: 5 } });
+  await app.register(multipart, {
+    limits: {
+      fileSize: IMAGE_LIMITS.maxBytes,
+      files: 1,
+      fields: 3,
+      fieldSize: 4096,
+      parts: 5,
+    },
+  });
+
   await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute' });
 
   // CSRF defence in depth (on top of SameSite=Lax cookies and JSON-only bodies):
   // state-changing requests must come from our own origin.
   const appOrigin = new URL(config.APP_URL).origin;
+
   app.addHook('onRequest', async (req, reply) => {
     if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return;
+
     const origin = req.headers.origin;
+
     if (origin) {
       let host = '';
+
       try {
         host = new URL(origin).host;
       } catch {
         /* malformed origin -> rejected below */
       }
+
       if (origin !== appOrigin && host !== req.headers.host) {
         return reply.code(403).send({ error: { code: 'bad_origin', message: 'Request blocked.' } });
       }
@@ -106,8 +144,12 @@ export async function buildApp(config: Config, overrides: { ai?: AiClient } = {}
 
   // Serve the built React app (single deployable). In dev, Vite serves the web app instead.
   const hasWeb = fs.existsSync(path.join(publicDir, 'index.html'));
+
   app.setNotFoundHandler((req, reply) => {
-    if (hasWeb && (req.method === 'GET' || req.method === 'HEAD') && !req.url.startsWith('/api/')) return sendSpa(publicDir, req.url, reply);
+    if (hasWeb && (req.method === 'GET' || req.method === 'HEAD') && !req.url.startsWith('/api/')) {
+      return sendSpa(publicDir, req.url, reply);
+    }
+
     return reply.code(404).send({ error: { code: 'not_found', message: 'Not found' } });
   });
 

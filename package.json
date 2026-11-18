@@ -3,12 +3,16 @@
   "private": true,
   "version": "0.1.0",
   "description": "GharSe — launch your handmade brand online",
-  "workspaces": ["server", "web"],
-  "engines": { "node": ">=20.17" },
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "engines": {
+    "node": ">=20.17"
+  },
   "scripts": {
     "dev": "concurrently -n server,web -c blue,magenta \"npm run dev -w server\" \"npm run dev -w web\"",
     "build": "npm run build -w web && npm run build -w server",
-    "prestart": "node tools/net-probe/probe.cjs",
     "start": "node server/dist/server.js",
     "postinstall": "npm run prisma -w server -- generate",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w web",

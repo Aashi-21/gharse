@@ -20,6 +20,7 @@ const schema = z
     DATABASE_URL: z
       .string({ error: 'DATABASE_URL is required' })
       .regex(/^postgres(ql)?:\/\//, 'must start with postgresql://'),
+    DATABASE_TRANSPORT: z.enum(['tcp', 'neon-websocket']).default('tcp'),
     SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(14),
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
     // Public checkout abuse limits (no customer accounts, so these are the only protection).
