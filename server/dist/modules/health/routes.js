@@ -1,19 +1,25 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.healthRoutes = healthRoutes;
-const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+const diagnose_1 = require("./diagnose");
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new diagnose_1.HealthTimeoutError()), ms))]);
 /**
  * Deployment health check. Reports only ok/fail/not_configured per subsystem —
  * never error details or secrets (details go to the server log).
  */
 async function healthRoutes(app) {
+    // Values that must never appear in a log line: every part of the database URL and the mail settings (including SMTP_PASS).
+    const secrets = (0, diagnose_1.healthLogSecrets)(app.config);
     const run = async (name, fn) => {
+        const started = Date.now();
         try {
             await withTimeout(fn(), 5000);
             return 'ok';
         }
         catch (err) {
-            app.log.error({ err, check: name }, 'health check failed');
+            // TEMPORARY diagnostics: log only sanitized fields (class, code, timeout flag, one masked line), never the raw error.
+            const failure = (0, diagnose_1.describeHealthFailure)(name, err, secrets, Date.now() - started);
+            app.log.error(failure, (0, diagnose_1.healthFailureMessage)(failure));
             return 'fail';
         }
     };

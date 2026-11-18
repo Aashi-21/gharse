@@ -1,21 +1,28 @@
 import type { FastifyInstance } from 'fastify';
+import { describeHealthFailure, HealthTimeoutError, healthFailureMessage, healthLogSecrets } from './diagnose';
 
 type CheckResult = 'ok' | 'fail';
 
 const withTimeout = <T>(p: Promise<T>, ms: number) =>
-  Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+  Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new HealthTimeoutError()), ms))]);
 
 /**
  * Deployment health check. Reports only ok/fail/not_configured per subsystem —
  * never error details or secrets (details go to the server log).
  */
 export async function healthRoutes(app: FastifyInstance) {
+  // Values that must never appear in a log line: every part of the database URL and the mail settings (including SMTP_PASS).
+  const secrets = healthLogSecrets(app.config);
+
   const run = async (name: string, fn: () => Promise<unknown>): Promise<CheckResult> => {
+    const started = Date.now();
     try {
       await withTimeout(fn(), 5000);
       return 'ok';
     } catch (err) {
-      app.log.error({ err, check: name }, 'health check failed');
+      // TEMPORARY diagnostics: log only sanitized fields (class, code, timeout flag, one masked line), never the raw error.
+      const failure = describeHealthFailure(name, err, secrets, Date.now() - started);
+      app.log.error(failure, healthFailureMessage(failure));
       return 'fail';
     }
   };
