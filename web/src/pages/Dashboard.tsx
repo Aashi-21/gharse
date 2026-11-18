@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Logo } from '../components/ui';
 import { useAuth, useMe } from '../lib/auth';
 
@@ -32,6 +32,7 @@ export default function Dashboard() {
             </NavLink>
             <NavLink to="/dashboard/store" className={linkCls}>Store</NavLink>
             <NavLink to="/dashboard/profile" className={linkCls}>Profile</NavLink>
+            <Link to="/contact" className="rounded-full px-4 py-2 text-sm font-medium text-ink-soft hover:bg-cream-200">Contact</Link>
             <button
               onClick={async () => {
                 await logout();

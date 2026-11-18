@@ -28,6 +28,10 @@ const schema = z
     ORDER_STORE_HOURLY_LIMIT: z.coerce.number().int().min(1).default(100), // per store per hour
     STORAGE_DRIVER: z.enum(['local']).default('local'),
     UPLOAD_DIR: z.string().default('uploads'),
+    // Public contact form abuse limits and delivery timeout (the form only works when SMTP_* and CONTACT_TO are set).
+    CONTACT_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10), // requests per client IP per hour (invalid ones count too)
+    CONTACT_HOURLY_LIMIT: z.coerce.number().int().min(1).default(60), // messages per hour in total (protects the mailbox)
+    CONTACT_SEND_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(15000),
     SMTP_HOST: z.string().optional(),
     SMTP_PORT: z.coerce.number().int().default(587),
     SMTP_SECURE: bool,

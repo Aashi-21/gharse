@@ -3,6 +3,7 @@ import { PageLoader } from './components/ui';
 import { useAuth } from './lib/auth';
 import AuthPage from './pages/AuthPage';
 import BrandPage from './pages/BrandPage';
+import ContactPage from './pages/ContactPage';
 import Dashboard from './pages/Dashboard';
 import Landing from './pages/Landing';
 import NewProductPage from './pages/NewProductPage';
@@ -41,6 +42,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route path="/store/:slug" element={<StorefrontPage />} />
       <Route path="/store/:slug/p/:productSlug" element={<PublicProductPage />} />
       <Route element={<GuestOnly />}>

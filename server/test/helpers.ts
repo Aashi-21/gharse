@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app';
 import { loadConfig, type Config } from '../src/config';
+import type { Mailer } from '../src/lib/mailer';
 import type { AiClient, StructuredRequest } from '../src/modules/ai/client';
 
 const testUrl = process.env.TEST_DATABASE_URL;
@@ -24,6 +25,8 @@ export async function makeApp(overrides: Record<string, string> = {}, ai?: AiCli
     ORDER_RATE_LIMIT_MAX: '1000',
     ORDER_PHONE_HOURLY_LIMIT: '1000',
     ORDER_STORE_HOURLY_LIMIT: '1000',
+    CONTACT_RATE_LIMIT_MAX: '1000',
+    CONTACT_HOURLY_LIMIT: '1000',
     ...overrides,
   });
   const app = await buildApp(config, ai ? { ai } : {});
@@ -202,4 +205,37 @@ export function placeOrderRequest(app: FastifyInstance, storeSlug: string, body:
     headers: { ...(key === null ? {} : { 'idempotency-key': key }), ...headers },
     payload: body as object,
   });
+}
+
+/** A stand-in for the real mailer: records what would be emailed, or fails/hangs on demand. */
+export function fakeMailer(opts: { fail?: Error; hang?: boolean } = {}) {
+  const sent: { subject: string; text: string; replyTo?: string }[] = [];
+  const mailer: Mailer = {
+    async verify() {},
+    async send(m) {
+      if (opts.hang) return new Promise<void>(() => {});
+      if (opts.fail) throw opts.fail;
+      sent.push(m);
+    },
+  };
+  return { mailer, sent };
+}
+
+/** An app whose mailer is replaced by `mailer` (use null to simulate "email not configured"). */
+export function makeAppWithMailer(mailer: Mailer | null, overrides: Record<string, string> = {}, beforeReady?: (app: FastifyInstance) => void) {
+  return makeApp(overrides, undefined, (a) => {
+    (a as unknown as { mailer: Mailer | null }).mailer = mailer;
+    beforeReady?.(a);
+  });
+}
+
+export const validContact = {
+  name: 'Asha Rao',
+  email: 'asha@example.com',
+  subject: 'Question about selling on GharSe',
+  message: 'Hello, I make crochet bags and would like to know how GharSe works for new sellers.',
+};
+
+export function postContact(app: FastifyInstance, body: unknown, headers: Record<string, string> = {}) {
+  return app.inject({ method: 'POST', url: '/api/contact', headers, payload: body as object });
 }

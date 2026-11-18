@@ -14,6 +14,7 @@ import { createStorage } from './lib/storage';
 import { createAiClient, type AiClient } from './modules/ai/client';
 import { authRoutes } from './modules/auth/routes';
 import { brandRoutes } from './modules/brand/routes';
+import { contactRoutes } from './modules/contact/routes';
 import { publicOrderRoutes } from './modules/orders/publicRoutes';
 import { sellerOrderRoutes } from './modules/orders/sellerRoutes';
 import { productRoutes } from './modules/products/routes';
@@ -93,6 +94,7 @@ export async function buildApp(config: Config, overrides: { ai?: AiClient } = {}
 
   registerAuth(app);
   await app.register(healthRoutes);
+  await app.register(contactRoutes);
   await app.register(authRoutes);
   await app.register(sellerRoutes);
   await app.register(brandRoutes);

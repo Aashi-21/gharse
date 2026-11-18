@@ -67,6 +67,7 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           )}
         </p>
       </Card>
+      <p className="mt-6 text-sm text-ink-faint">Need help? <Link to="/contact" className="font-medium text-clay-dark hover:underline">Contact us</Link></p>
     </div>
   );
 }

@@ -16,6 +16,7 @@ export default function Landing() {
             </Link>
           ) : (
             <>
+              <Link to="/contact" className="hidden rounded-full px-4 py-2.5 font-medium text-ink-soft hover:bg-cream-200 sm:inline-block">Contact</Link>
               <Link to="/login" className="rounded-full px-4 py-2.5 font-medium text-ink-soft hover:bg-cream-200">Log in</Link>
               <Link to="/register" className="rounded-full bg-clay px-5 py-2.5 font-medium text-white hover:bg-clay-dark">Start your store</Link>
             </>
@@ -51,6 +52,13 @@ export default function Landing() {
           ))}
         </ul>
       </main>
+
+      <footer className="border-t border-cream-300">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-6 text-sm text-ink-soft">
+          <span>GharSe: your handmade brand, online.</span>
+          <Link to="/contact" className="font-medium text-clay-dark hover:underline">Contact us</Link>
+        </div>
+      </footer>
     </div>
   );
 }

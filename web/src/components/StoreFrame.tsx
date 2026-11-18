@@ -52,7 +52,7 @@ export default function StoreFrame({ store, children }: { store: PublicStore; ch
               <p className="mt-1 whitespace-pre-line">{store.returnPolicy}</p>
             </div>
           )}
-          <p className="text-xs text-ink-faint sm:col-span-3">{PAYMENT_NOTE} Store powered by GharSe.</p>
+          <p className="text-xs text-ink-faint sm:col-span-3">{PAYMENT_NOTE} Store powered by GharSe. <Link to="/contact" className="text-clay-dark underline">Contact GharSe</Link></p>
         </div>
       </footer>
     </div>

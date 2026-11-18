@@ -3,13 +3,15 @@ import { ZodError } from 'zod';
 import { HttpError } from '../lib/httpError';
 
 /**
- * What may be logged for an unexpected error. Errors raised while handling a public checkout can carry customer data
- * (ORM errors often embed the query arguments: name, phone, address, note), so for those only the error's class and
- * code are logged, never its message, stack or arguments.
+ * What may be logged for an unexpected error. Errors raised while handling sensitive public POSTs can carry personal
+ * data (ORM errors often embed the query arguments), so for those only the error's class and code are logged,
+ * never its message, stack or arguments.
  */
 export function errorLogPayload(err: unknown, method: string, url: string) {
-  const checkout = method === 'POST' && /^\/api\/public\/stores\/[^/]+\/orders/.test(url);
-  if (!checkout) return { err };
+  // Public checkout carries customer details; the contact form carries a visitor's name, email and message
+  // (mail-server errors also tend to quote email addresses).
+  const sensitive = method === 'POST' && (/^\/api\/public\/stores\/[^/]+\/orders/.test(url) || /^\/api\/contact(\?|$)/.test(url));
+  if (!sensitive) return { err };
   const e = err as { name?: string; code?: string };
   return { errName: e?.name ?? 'Error', errCode: e?.code };
 }
