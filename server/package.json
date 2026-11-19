@@ -12,7 +12,6 @@
     "ai:smoke": "tsx scripts/ai-smoke.ts",
     "e2e:brand-memory": "tsx scripts/e2e-brand-memory.ts",
     "e2e:regenerate": "tsx scripts/e2e-regenerate.ts",
-    "smtp:sink": "tsx scripts/smtp-sink.ts",
     "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts"
   },
   "dependencies": {
@@ -25,14 +24,12 @@
     "@prisma/adapter-neon": "^6.19.3",
     "@prisma/client": "^6.19.0",
     "fastify": "^5.0.0",
-    "nodemailer": "^10.6.0",
     "prisma": "^6.19.0",
     "ws": "^8.23.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^20.17.0",
-    "@types/nodemailer": "^8.0.2",
     "@types/ws": "^8.18.2",
     "tsx": "^4.19.0",
     "typescript": "^5.9.0"

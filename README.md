@@ -96,21 +96,26 @@ The per-IP limit depends on knowing the visitor's real IP, which behind a revers
 Live acceptance (what was run): the compiled build over real HTTP with 15 parallel buyers for 4 units (4 orders, 11 sold-out refusals, stock 0), same-key duplicate storms (one order), cancel/restock, and spoofed forwarded IPs with the default settings.
 
 ## Contact form (`/contact`)
-A public page (linked from the landing page, store footers, login/register pages and the dashboard) posts to `POST /api/contact`, which emails the site owner through the existing mailer (`nodemailer`, `server/src/lib/mailer.ts`). No new service is involved.
 
-**Behaviour you can rely on**
-- The page says "Message sent" **only** when the server returns `{"sent": true}`, which happens only after the mail server accepted the message. Otherwise it shows an error and keeps what the visitor typed.
-- Fields: `name` (2-80), `email` (valid, at most 254), `subject` (3-120, no line breaks), `message` (10-2000), plus a hidden honeypot `website` that must stay empty. The schema is strict: unknown fields (for example an attempt to add a recipient or `cc`) are rejected, and control characters in name, email or subject are refused so nothing can inject extra mail headers. Request bodies over 16 KB are refused.
-- Outcomes: `200 {sent:true}`; `400` validation or honeypot; `413` too large; `429` rate limited; `502 contact_failed` mail server rejected, unreachable or too slow; `503 contact_unavailable` email is not configured. Responses never mention the recipient, the SMTP host or any server detail.
-- Names, email addresses and message text are never logged. When delivery fails, only the error class and code are logged (mail errors often quote addresses).
-- The email is plain text, sent from `MAIL_FROM` to `CONTACT_TO` with `Reply-To` set to the visitor, subject prefixed `[GharSe contact]`.
+The public contact page posts to `POST /api/contact`. The server sends messages through GoDaddy Node.js Hosting's local email gateway using `server/src/lib/emailGateway.ts` and `server/src/lib/mailer.ts`.
 
-**Configuration** (all from the server environment; see `.env.example`). There are deliberately **no default SMTP settings**: they come from your mailbox provider, which has not been decided yet.
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `CONTACT_TO`. If `SMTP_HOST` is set, `MAIL_FROM` and `CONTACT_TO` are required and `SMTP_USER`/`SMTP_PASS` must be set together (the app refuses to start otherwise). With `SMTP_HOST` unset the form answers 503 and `/api/health` reports `email: not_configured`.
-- `CONTACT_RATE_LIMIT_MAX` (default 10 requests per client IP per hour; invalid requests count too), `CONTACT_HOURLY_LIMIT` (default 60 messages per hour in total across all visitors, held in memory so it resets when the process restarts), `CONTACT_SEND_TIMEOUT_MS` (default 15000).
-- The per-IP limit needs the real client IP: read the `TRUST_PROXY` section above before deploying.
+**Behaviour**
+- The page displays "Message sent" only after the email gateway accepts the message.
+- Fields: `name` (2-80), `email` (valid, at most 254), `subject` (3-120), `message` (10-2000), and a hidden honeypot field `website`.
+- Outcomes: `200 {sent:true}` on successful delivery; `400` validation or honeypot; `413` oversized request; `429` rate limited; `502 contact_failed` delivery failure; `503 contact_unavailable` when email is not configured.
+- Visitor name, email and message are never logged. Delivery failures log only safe error information.
+- Messages are plain text, addressed to `CONTACT_TO`, with the visitor's email set as `Reply-To`.
+- GoDaddy selects the sender address; the application does not configure an SMTP sender.
 
-**Testing it**
-- Automated (mock mailer, plus the real mailer against a local fake SMTP server): `cd server && node --import tsx --test --test-concurrency=1 test/contact.test.ts test/contact-smtp.test.ts` (or just `npm test`).
-- Manually, with no real mailbox: in one terminal run `npm run smtp:sink` (a local fake SMTP server on `127.0.0.1:2525` that prints each email and delivers nothing). In another, start the app with these local-only example values (they are not production settings): `SMTP_HOST=127.0.0.1 SMTP_PORT=2525 SMTP_SECURE=false MAIL_FROM=no-reply@localhost.test CONTACT_TO=owner@localhost.test`. Open `/contact`, send a message, and watch it appear in the sink terminal. `GET /api/health` should then show `"email": "ok"`.
-- Against the real mailbox once it exists: set the `SMTP_*`, `MAIL_FROM` and `CONTACT_TO` values from the provider, check `/api/health` shows `email: ok`, and send a test message from `/contact`.
+**Configuration**
+- Set `CONTACT_TO` in the server environment to the mailbox that should receive contact messages.
+- Email delivery uses GoDaddy's local gateway at `127.0.0.1:2525` through the official hosting helper.
+- No SMTP credentials or external email provider are required.
+- `CONTACT_RATE_LIMIT_MAX` (default 10 requests per client IP per hour).
+- `CONTACT_HOURLY_LIMIT` (default 60 messages per hour across all visitors).
+- `CONTACT_SEND_TIMEOUT_MS` (default 15000).
+
+**Testing**
+- Run automated tests with `npm test`.
+- The contact-form tests mock the GoDaddy gateway and cover successful delivery, failure handling, validation, rate limits and privacy.
+- Verify actual email delivery by submitting the contact form in the GoDaddy Preview environment and confirming receipt at the configured mailbox. The health endpoint's `email: configured` status confirms configuration only; it does not test delivery.

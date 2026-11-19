@@ -91,23 +91,25 @@ export function secretsFromUrl(url: string | undefined): string[] {
  * Everything configured that must never appear in a health log line. Typed against the real Config, so a property name
  * that does not exist fails the type-check instead of silently masking nothing.
  */
-export function healthLogSecrets(c: Pick<Config, 'DATABASE_URL' | 'SMTP_HOST' | 'SMTP_USER' | 'SMTP_PASS' | 'MAIL_FROM' | 'CONTACT_TO'>): string[] {
+
+/**
+ * Everything configured that must never appear in a health log line.
+ * Typed against the real Config, so a property name that does not exist
+ * fails the type-check instead of silently masking nothing.
+ */
+export function healthLogSecrets(c: Pick<Config, 'DATABASE_URL' | 'CONTACT_TO'>): string[] {
   const out = new Set<string>(secretsFromUrl(c.DATABASE_URL));
   const add = (v: string | undefined) => secretVariants(v).forEach((x) => out.add(x));
-  add(c.SMTP_HOST);
-  add(c.SMTP_USER);
-  add(c.SMTP_PASS);
-  // Addresses may be written as `Name <a@b.c>` or as a comma-separated list: mask each entry, and each bare address in it.
-  for (const field of [c.MAIL_FROM, c.CONTACT_TO]) {
-    for (const piece of (field ?? '').split(/[,;]/)) {
-      add(piece.trim());
-      add(piece.match(/<([^>]+)>/)?.[1]?.trim());
-    }
+
+  // The contact recipient must never appear in health logs.
+  for (const piece of (c.CONTACT_TO ?? '').split(/[,;]/)) {
+    add(piece.trim());
+    add(piece.match(/<([^>]+)>/)?.[1]?.trim());
   }
-  // SMTP AUTH PLAIN sends base64("\0user\0password"); mask that exact string as well.
-  if (c.SMTP_USER && c.SMTP_PASS) out.add(Buffer.from(`\u0000${c.SMTP_USER}\u0000${c.SMTP_PASS}`, 'utf8').toString('base64'));
+
   return [...out];
 }
+
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

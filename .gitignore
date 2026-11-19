@@ -9,3 +9,6 @@ uploads/
 .DS_Store
 coverage/
 .pgdata/
+
+# Generated database inspection client
+tools/db-inspect/.client/

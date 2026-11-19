@@ -1,29 +1,31 @@
-import nodemailer from 'nodemailer';
 import type { Config } from '../config';
+import { sendEmail } from './emailGateway';
 
 export interface Mailer {
-  verify(): Promise<void>;
   send(opts: { subject: string; text: string; replyTo?: string }): Promise<void>;
 }
 
-/** Returns null when SMTP is not configured. */
+/**
+ * Uses GoDaddy's built-in Node.js Hosting email gateway.
+ * Returns null when the contact recipient is not configured.
+ */
 export function createMailer(config: Config): Mailer | null {
-  if (!config.SMTP_HOST) return null;
-  const transport = nodemailer.createTransport({
-    host: config.SMTP_HOST,
-    port: config.SMTP_PORT,
-    secure: config.SMTP_SECURE,
-    auth: config.SMTP_USER ? { user: config.SMTP_USER, pass: config.SMTP_PASS } : undefined,
-    connectionTimeout: 5000,
-    greetingTimeout: 5000,
-    socketTimeout: 8000,
-  });
+  if (!config.CONTACT_TO) return null;
+
   return {
-    async verify() {
-      await transport.verify();
-    },
+    /**
+     * The GoDaddy gateway does not expose an SMTP-style verify operation.
+     * Health-check handling will be updated separately.
+     */
+
     async send({ subject, text, replyTo }) {
-      await transport.sendMail({ from: config.MAIL_FROM, to: config.CONTACT_TO, subject, text, replyTo });
+      await sendEmail({
+        to: config.CONTACT_TO!,
+        subject,
+        text,
+        replyTo,
+        // Omit `from`: GoDaddy selects the canonical sender identity.
+      });
     },
   };
 }

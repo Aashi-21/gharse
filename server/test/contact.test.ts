@@ -51,7 +51,9 @@ describe('delivery success', () => {
 
   it('never leaks recipient or SMTP configuration to the browser', async () => {
     const m = fakeMailer();
-    const app = await appWith(m.mailer, { SMTP_HOST: 'smtp.secret-host.test', MAIL_FROM: 'noreply@secret-sender.test', CONTACT_TO: 'owner-inbox@secret-recipient.test', SMTP_USER: 'u', SMTP_PASS: 'p' });
+    const app = await appWith(m.mailer, {
+  CONTACT_TO: 'owner-inbox@secret-recipient.test'
+});
     const responses = [await postContact(app, validContact), await postContact(app, { ...validContact, email: 'bad' })];
     for (const r of responses) {
       for (const secret of ['secret-host', 'secret-sender', 'secret-recipient', 'owner-inbox', 'smtp']) {
@@ -205,7 +207,7 @@ describe('delivery failure and missing configuration (fail safely, never claim s
     assert.equal(res.statusCode, 503);
     assert.equal(json(res).error.code, 'contact_unavailable');
     assert.ok(!res.body.includes('"sent"'), 'no "sent" claim');
-    for (const hint of ['SMTP', 'CONTACT_TO', 'MAIL_FROM', 'configured', 'env']) assert.ok(!res.body.includes(hint), `must not hint at "${hint}"`);
+    for (const hint of ['CONTACT_TO', 'configured', 'env']) assert.ok(!res.body.includes(hint), `must not hint at "${hint}"`);
     // validation still runs first, so bad input is a 400 even when mail is down
     assert.equal((await postContact(app, { ...validContact, email: 'bad' })).statusCode, 400);
   });

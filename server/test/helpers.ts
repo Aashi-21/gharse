@@ -20,7 +20,6 @@ export async function makeApp(overrides: Record<string, string> = {}, ai?: AiCli
     NODE_ENV: 'test',
     DATABASE_URL: testUrl!,
     UPLOAD_DIR: uploadDir,
-    SMTP_HOST: '',
     AUTH_RATE_LIMIT_MAX: '1000',
     ORDER_RATE_LIMIT_MAX: '1000',
     ORDER_PHONE_HOURLY_LIMIT: '1000',

@@ -323,63 +323,58 @@ describe('health failure diagnostics: credential leakage review', () => {
   });
 });
 
-describe('health failure diagnostics: configured secrets (database and mail)', () => {
-  // The REAL config loader, so this fails if a property name used for masking does not exist.
-  const SMTP_PASS = 'Sm7p/Passw0rd!';
+
+
+describe('health failure diagnostics: configured secrets (database and contact)', () => {
+  // Use the real config loader so the test verifies the actual config properties.
   const cfg = loadConfig({
     DATABASE_URL: URL,
-    SMTP_HOST: 'smtp.mailhost.example',
-    SMTP_USER: 'mailer-user',
-    SMTP_PASS,
-    MAIL_FROM: 'GharSe <no-reply@gharse.example>',
-    CONTACT_TO: 'owner@gharse.example, backup@gharse.example',
+    CONTACT_TO: 'owner@gharse.example',
   });
   const list = healthLogSecrets(cfg);
 
   it('uses the property names the real config declares', () => {
-    assert.equal(cfg.SMTP_PASS, SMTP_PASS, 'SMTP_PASS is the real name of the SMTP password setting');
-    const configSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'config.ts'), 'utf8');
-    assert.ok(configSource.includes('SMTP_PASS: z.string()'), 'config.ts declares SMTP_PASS');
+    assert.equal(cfg.CONTACT_TO, 'owner@gharse.example');
+
+    const configSource = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'config.ts'),
+      'utf8',
+    );
+
+    assert.ok(configSource.includes('CONTACT_TO: z.string().email()'));
   });
 
-  it('masks the SMTP password in plain, encoded, lower-case-encoded and base64 form', () => {
-    const forms = [SMTP_PASS, encodeURIComponent(SMTP_PASS), lowerHex(encodeURIComponent(SMTP_PASS)), b64(SMTP_PASS)];
-    const out = sanitizeDetail(`Invalid login: 535 5.7.8 Authentication failed (${forms.join(' | ')})`, list);
-    assert.deepEqual(leaks(out, forms), [], out);
-  });
-
-  it('masks the SMTP AUTH PLAIN token (base64 of NUL user NUL password)', () => {
-    const plain = b64(`\u0000mailer-user\u0000${SMTP_PASS}`);
-    const out = sanitizeDetail(`AUTH PLAIN ${plain}`, list);
-    assert.ok(!out.includes(plain), out);
-  });
-
-  it('masks the SMTP host, user and every sender or recipient address', () => {
-    const text = 'Invalid login for mailer-user at smtp.mailhost.example from no-reply@gharse.example to owner@gharse.example and backup@gharse.example';
+  it('masks the configured contact recipient address', () => {
+    const text = 'Delivery failed to owner@gharse.example';
     const out = sanitizeDetail(text, list);
-    assert.ok(!/mailer-user|mailhost|no-reply@|owner@|backup@/.test(out), out);
+    assert.ok(!/owner@|gharse\.example/i.test(out), out);
   });
 
-  it('masks a sender or recipient field as a whole, including the display name and the full list', () => {
-    const out = sanitizeDetail('rejected sender GharSe <no-reply@gharse.example> and recipients owner@gharse.example, backup@gharse.example', list);
-    assert.ok(!/GharSe|gharse\.example/i.test(out), `display name and addresses are gone: ${out}`);
+  it('masks the contact recipient in an error message', () => {
+    const out = sanitizeDetail(
+      'Rejected recipient owner@gharse.example',
+      list,
+    );
+    assert.ok(!/owner@|gharse\.example/i.test(out), out);
   });
 
   it('still masks every database detail from the same list', () => {
-    const out = sanitizeDetail(`${URL} ${HOST} ${USER} ${PASSWORD} ${DB}`, list);
+    const out = sanitizeDetail(
+      `${URL} ${HOST} ${USER} ${PASSWORD} ${DB}`,
+      list,
+    );
     assert.deepEqual(leaks(out), [], out);
   });
 
-  it('works when email is not configured at all (no SMTP values)', () => {
+  it('works when email is not configured at all', () => {
     const bare = loadConfig({ DATABASE_URL: URL });
-    assert.deepEqual(leaks(sanitizeDetail(`${HOST} ${PASSWORD}`, healthLogSecrets(bare))), []);
-  });
-
-  it('masks mail settings when the email check itself fails', () => {
-    const f = describeHealthFailure('email', new Error(`Invalid login for owner@gharse.example: ${SMTP_PASS}`), list, 1);
-    assert.ok(!/owner@gharse|Passw0rd/.test(f.detail), f.detail);
+    assert.deepEqual(
+      leaks(sanitizeDetail(`${HOST} ${PASSWORD}`, healthLogSecrets(bare))),
+      [],
+    );
   });
 });
+
 
 describe('health route: behaviour is unchanged', () => {
   // Static checks on the route source, so a future edit cannot quietly change the check or start logging raw errors.

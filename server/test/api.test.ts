@@ -26,12 +26,14 @@ describe('config', () => {
   it('rejects missing DATABASE_URL with a readable message', () => {
     assert.throws(() => loadConfig({ NODE_ENV: 'test' }), /DATABASE_URL/);
   });
-  it('requires MAIL_FROM/CONTACT_TO when SMTP_HOST is set', () => {
-    assert.throws(
-      () => loadConfig({ DATABASE_URL: 'postgresql://a:b@h/db', SMTP_HOST: 'smtp.example.com' }),
-      /MAIL_FROM/,
-    );
+  it('accepts a valid contact recipient without SMTP configuration', () => {
+  const cfg = loadConfig({
+    DATABASE_URL: 'postgresql://a:b@h/db',
+    CONTACT_TO: 'owner@gharse.example',
   });
+
+  assert.equal(cfg.CONTACT_TO, 'owner@gharse.example');
+});
 });
 
 describe('password hashing', () => {
@@ -66,15 +68,21 @@ describe('health', () => {
     await bad.close();
   });
 
-  it('reports email fail when SMTP is configured but unreachable', async () => {
-    const { app: m } = await makeApp({
-      SMTP_HOST: '127.0.0.1', SMTP_PORT: '1', MAIL_FROM: 'a@b.test', CONTACT_TO: 'c@d.test',
-    });
-    const res = await m.inject({ method: 'GET', url: '/api/health' });
-    assert.equal(res.statusCode, 200); // email problems do not take the app "down"
-    assert.equal(json(res).checks.email, 'fail');
-    await m.close();
+  it('reports email configured when the contact recipient is configured', async () => {
+  const { app: configured } = await makeApp({
+    CONTACT_TO: 'c@d.test',
   });
+
+  const res = await configured.inject({
+    method: 'GET',
+    url: '/api/health',
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(json(res).checks.email, 'configured');
+
+  await configured.close();
+});
 });
 
 describe('auth', () => {
